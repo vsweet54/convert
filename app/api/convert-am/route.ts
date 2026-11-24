@@ -1,83 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 
-const FAST_COLORS = 8;
-const ACCURATE_COLORS = 32;
+export const maxDuration = 60;
+export const runtime = "nodejs";
 
-// Quantize warna pakai median cut sederhana
-function quantizeColors(pixels: Buffer, width: number, height: number, maxColors: number) {
-  const colorMap = new Map<string, { r: number; g: number; b: number; count: number; pixels: [number, number][] }>();
+function quantizeColors(
+  pixels: Buffer,
+  width: number,
+  height: number,
+  maxColors: number,
+  step: number
+) {
+  const colorMap = new Map<
+    string,
+    { r: number; g: number; b: number; pixels: [number, number][] }
+  >();
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
-      const r = pixels[idx];
-      const g = pixels[idx + 1];
-      const b = pixels[idx + 2];
       const a = pixels[idx + 3];
+      if (a < 128) continue;
 
-      if (a < 128) continue; // skip transparan
-
-      // Quantize ke bucket
-      const step = maxColors === FAST_COLORS ? 64 : 32;
-      const qr = Math.round(r / step) * step;
-      const qg = Math.round(g / step) * step;
-      const qb = Math.round(b / step) * step;
-      const key = `${qr},${qg},${qb}`;
+      const r = Math.round(pixels[idx] / step) * step;
+      const g = Math.round(pixels[idx + 1] / step) * step;
+      const b = Math.round(pixels[idx + 2] / step) * step;
+      const key = `${r},${g},${b}`;
 
       if (!colorMap.has(key)) {
-        colorMap.set(key, { r: qr, g: qg, b: qb, count: 0, pixels: [] });
+        colorMap.set(key, { r, g, b, pixels: [] });
       }
-      const entry = colorMap.get(key)!;
-      entry.count++;
-      entry.pixels.push([x, y]);
+      colorMap.get(key)!.pixels.push([x, y]);
     }
   }
 
-  // Sort by count, ambil top N
   return [...colorMap.values()]
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.pixels.length - a.pixels.length)
     .slice(0, maxColors);
 }
 
-// Flood fill → dapat region per warna
-function floodFill(
-  pixelGrid: string[][],
-  startX: number,
-  startY: number,
-  targetColor: string,
-  visited: boolean[][]
-): [number, number][] {
-  const width = pixelGrid[0].length;
-  const height = pixelGrid.length;
-  const region: [number, number][] = [];
-  const stack: [number, number][] = [[startX, startY]];
-
-  while (stack.length > 0) {
-    const [x, y] = stack.pop()!;
-    if (x < 0 || x >= width || y < 0 || y >= height) continue;
-    if (visited[y][x]) continue;
-    if (pixelGrid[y][x] !== targetColor) continue;
-
-    visited[y][x] = true;
-    region.push([x, y]);
-
-    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-  }
-
-  return region;
-}
-
-// Convert region pixels → SVG path sederhana (bounding box + rle)
 function regionToPath(region: [number, number][]): string {
   if (region.length === 0) return "";
 
-  // Sort by y then x
-  const sorted = [...region].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-
-  // Group by row
   const rows = new Map<number, number[]>();
-  for (const [x, y] of sorted) {
+  for (const [x, y] of region) {
     if (!rows.has(y)) rows.set(y, []);
     rows.get(y)!.push(x);
   }
@@ -90,7 +56,6 @@ function regionToPath(region: [number, number][]): string {
 
     for (let i = 1; i <= xs.length; i++) {
       if (i === xs.length || xs[i] !== prev + 1) {
-        // Draw horizontal line segment
         path += `M ${start} ${y} H ${prev + 1} V ${y + 1} H ${start} Z `;
         if (i < xs.length) {
           start = xs[i];
@@ -105,12 +70,12 @@ function regionToPath(region: [number, number][]): string {
   return path.trim();
 }
 
-// Hex color
 function toHex(r: number, g: number, b: number): string {
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+  return `#${r.toString(16).padStart(2, "0")}${g
+    .toString(16)
+    .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
-// Generate AM XML
 function generateAMXML(
   shapes: { color: string; path: string }[],
   width: number,
@@ -118,8 +83,7 @@ function generateAMXML(
 ): string {
   const layersXML = shapes
     .map(
-      (s, i) => `
-    <layer id="${i}" type="shape" name="Shape ${i + 1}">
+      (s, i) => `    <layer id="${i}" type="shape" name="Shape ${i + 1}">
       <transform>
         <position x="0" y="0"/>
         <scale x="1" y="1"/>
@@ -149,18 +113,20 @@ ${layersXML}
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get("file") as File | null;
     const mode = (formData.get("mode") as string) || "fast";
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
+    const isFast = mode === "fast";
+    const maxSize = isFast ? 128 : 256;
+    const maxColors = isFast ? 8 : 32;
+    const step = isFast ? 64 : 32;
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-
-    // Resize kalau terlalu besar (Vercel limit)
-    const maxSize = mode === "fast" ? 256 : 512;
 
     const { data: pixels, info } = await sharp(buffer)
       .resize(maxSize, maxSize, { fit: "inside" })
@@ -169,32 +135,28 @@ export async function POST(req: NextRequest) {
       .toBuffer({ resolveWithObject: true });
 
     const { width, height } = info;
-    const maxColors = mode === "fast" ? FAST_COLORS : ACCURATE_COLORS;
 
-    // Quantize
-    const colors = quantizeColors(pixels, width, height, maxColors);
+    const colors = quantizeColors(pixels, width, height, maxColors, step);
 
-    // Build pixel grid (quantized)
-    const step = mode === "fast" ? 64 : 32;
-    const pixelGrid: string[][] = Array.from({ length: height }, () =>
-      new Array(width).fill("")
-    );
+    // Build visited grid
+    const visited = new Uint8Array(width * height);
 
+    // Build quantized color grid
+    const colorGrid = new Array<string>(width * height);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
+        const a = pixels[idx + 3];
+        if (a < 128) {
+          colorGrid[y * width + x] = "";
+          continue;
+        }
         const r = Math.round(pixels[idx] / step) * step;
         const g = Math.round(pixels[idx + 1] / step) * step;
         const b = Math.round(pixels[idx + 2] / step) * step;
-        const a = pixels[idx + 3];
-        pixelGrid[y][x] = a < 128 ? "transparent" : `${r},${g},${b}`;
+        colorGrid[y * width + x] = `${r},${g},${b}`;
       }
     }
-
-    // Flood fill per warna
-    const visited: boolean[][] = Array.from({ length: height }, () =>
-      new Array(width).fill(false)
-    );
 
     const shapes: { color: string; path: string }[] = [];
 
@@ -203,16 +165,38 @@ export async function POST(req: NextRequest) {
       const hexColor = toHex(colorEntry.r, colorEntry.g, colorEntry.b);
 
       for (const [px, py] of colorEntry.pixels) {
-        if (visited[py][px]) continue;
+        const startIdx = py * width + px;
+        if (visited[startIdx]) continue;
 
-        const region = floodFill(pixelGrid, px, py, colorKey, visited);
-        if (region.length < 4) continue; // skip region terlalu kecil
+        // Iterative flood fill
+        const region: [number, number][] = [];
+        const stack: number[] = [startIdx];
+
+        while (stack.length > 0) {
+          const idx = stack.pop()!;
+          if (visited[idx]) continue;
+          if (colorGrid[idx] !== colorKey) continue;
+
+          visited[idx] = 1;
+          const cx = idx % width;
+          const cy = Math.floor(idx / width);
+          region.push([cx, cy]);
+
+          if (cx + 1 < width) stack.push(idx + 1);
+          if (cx - 1 >= 0) stack.push(idx - 1);
+          if (cy + 1 < height) stack.push(idx + width);
+          if (cy - 1 >= 0) stack.push(idx - width);
+        }
+
+        if (region.length < 2) continue;
 
         const path = regionToPath(region);
-        if (path) {
-          shapes.push({ color: hexColor, path });
-        }
+        if (path) shapes.push({ color: hexColor, path });
       }
+    }
+
+    if (shapes.length === 0) {
+      return NextResponse.json({ error: "Tidak ada shape yang dihasilkan" }, { status: 400 });
     }
 
     const xml = generateAMXML(shapes, width, height);
@@ -223,8 +207,11 @@ export async function POST(req: NextRequest) {
         "Content-Disposition": `attachment; filename="output.xml"`,
       },
     });
-  } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Conversion failed" }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("convert-am error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Conversion failed" },
+      { status: 500 }
+    );
   }
 }
