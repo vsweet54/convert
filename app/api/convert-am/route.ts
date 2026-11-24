@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 
 export const maxDuration = 60;
-export const runtime = "nodejs";
 
 function quantizeColors(
   pixels: Buffer,
