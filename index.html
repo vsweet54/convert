@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="description" content="Download video TikTok tanpa watermark. Gratis, cepat, tanpa login."/>
+<title>Tikdrop — TikTok Downloader</title>
+<link rel="stylesheet" href="theme.css"/>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ── Animated background ── -->
+<div class="bg-mesh" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="orb orb-4"></div>
+</div>
+<div class="bg-noise" aria-hidden="true"></div>
+
+<!-- ── Nav ── -->
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="nav-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 2v8M8 10l-2.5-2.5M8 10l2.5-2.5M2 13.5h12" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    Tikdrop
+  </a>
+  <div class="nav-badge">Gratis selamanya</div>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+  <!-- Hero -->
+  <div class="hero-top">
+    <div class="hero-label">
+      <span class="hero-label-dot"></span>
+      TikTok Downloader
+    </div>
+    <h1 class="hero-title" aria-label="Download TikTok tanpa watermark">
+      <span class="line">
+        <span class="w word-1">Download</span>
+        <span class="w word-2">TikTok</span>
+      </span>
+      <span class="line">
+        <span class="w hero-gradient word-3">tanpa</span>
+        <span class="w hero-gradient word-4">watermark.</span>
+      </span>
+    </h1>
+    <p class="hero-sub">Tempel link, satu klik, langsung unduh. Tidak perlu login atau instal apapun.</p>
+  </div>
+
+  <!-- Input panel -->
+  <div class="input-panel fu-2" id="inputPanel">
+    <div class="input-row">
+      <svg class="input-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M14 10.667A1.333 1.333 0 0112.667 12H3.333A1.333 1.333 0 012 10.667V5.333A1.333 1.333 0 013.333 4h2.334L7 2h2l1.333 2h2.334A1.333 1.333 0 0114 5.333v5.334z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="8" cy="7.5" r="1.5" stroke="currentColor" stroke-width="1.3"/>
+      </svg>
+      <input
+        id="urlInput"
+        type="url"
+        placeholder="Tempel link TikTok di sini..."
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <button class="btn-go" id="goBtn">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <path d="M7.5 2v8M7.5 10l-3-3M7.5 10l3-3M1.5 13h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="go-label">Download</span>
+      </button>
+    </div>
+
+    <!-- Progress -->
+    <div class="prog-wrap" id="progWrap">
+      <div class="prog-track">
+        <div class="prog-fill" id="progFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-row" id="statusRow"></div>
+  <div class="err-box" id="errBox"></div>
+
+  <!-- Results -->
+  <div class="results-wrap" id="resultsWrap">
+    <div class="profile-card" id="profileCard"></div>
+
+    <div class="preview-wrap">
+      <div class="results-label">Preview</div>
+      <video id="previewVideo" class="preview-video" controls playsinline preload="metadata"></video>
+      <p class="caption" id="caption"></p>
+    </div>
+
+    <div class="results-label">Pilih format</div>
+    <div id="dlCards"></div>
+  </div>
+
+  <!-- How-to -->
+  <div class="how-wrap">
+    <p class="how-title">Cara pakai</p>
+    <div class="how-steps">
+      <div class="how-step">
+        <span class="how-num">01</span>
+        <p>Buka TikTok, cari video yang ingin kamu unduh.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-num">02</span>
+        <p>Ketuk <strong>Share → Copy link</strong> untuk menyalin URL video.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-num">03</span>
+        <p>Tempel URL di kolom di atas lalu klik <strong>Download</strong> — atau tempel langsung, otomatis jalan.</p>
+      </div>
+      <div class="how-step">
+        <span class="how-num">04</span>
+        <p>Pilih <strong>tanpa watermark</strong>, dengan watermark, atau audio saja.</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Tikdrop — bebas dipakai, tanpa iklan &nbsp;·&nbsp;
+  Powered by <a href="https://tikwm.com" target="_blank" rel="noopener">tikwm.com</a>
+  &nbsp;·&nbsp; Hormati hak cipta kreator ♥
+</footer>
+
+<script>
+/* ─────────────────────────────────────────
+   TIKDROP — app.js (inlined)
+───────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+
+const GO_HTML = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+  <path d="M7.5 2v8M7.5 10l-3-3M7.5 10l3-3M1.5 13h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+<span class="go-label">Download</span>`;
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+const fmtCount = n =>
+  new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+
+// Scramble decode — katakana + block chars for style
+const G = 'アイウエカキクコサシスセタチツテ░▒▓█01234ABCD$#@';
+
+function scramble(el, target, ms) {
+  const n = target.length;
+  const frames = Math.round((ms || 700) / 36);
+  let f = 0;
+  const iv = setInterval(() => {
+    let s = '';
+    for (let i = 0; i < n; i++) {
+      s += f > i * (frames / n)
+        ? target[i]
+        : G[Math.floor(Math.random() * G.length)];
+    }
+    el.textContent = s;
+    if (f++ >= frames) { el.textContent = target; clearInterval(iv); }
+  }, 36);
+}
+
+function setStatusText(txt) {
+  const row = $('statusRow');
+  row.innerHTML = '';
+  const el = document.createElement('span');
+  el.className = 'stat-txt';
+  row.appendChild(el);
+  if (txt) scramble(el, txt, 650);
+}
+
+function setError(msg) {
+  const box = $('errBox');
+  box.textContent = msg;
+  box.style.display = 'block';
+  box.style.animation = 'none';
+  requestAnimationFrame(() => { box.style.animation = ''; });
+}
+
+// Progress
+let progTimer = null;
+function startProgress() {
+  const wrap = $('progWrap');
+  const fill = $('progFill');
+  wrap.classList.add('show');
+  fill.style.width = '0%';
+  let w = 0;
+  clearInterval(progTimer);
+  progTimer = setInterval(() => {
+    w = Math.min(w + Math.random() * 11, 83);
+    fill.style.width = w + '%';
+  }, 190);
+}
+function endProgress(ok) {
+  clearInterval(progTimer);
+  const wrap = $('progWrap');
+  const fill = $('progFill');
+  if (!ok) {
+    fill.style.animation = 'none';
+    fill.style.background = 'var(--err)';
+  }
+  fill.style.width = '100%';
+  setTimeout(() => {
+    wrap.classList.remove('show');
+    fill.style.width = '0%';
+    fill.style.animation = '';
+    fill.style.background = '';
+  }, 550);
+}
+
+/* ── Result rendering ── */
+function renderProfile(v) {
+  const a = v.author || {};
+  const name = esc(a.nickname || a.unique_id || 'TikTok');
+  const handle = a.unique_id ? '@' + esc(a.unique_id) : '';
+  const followers = a.follower_count ?? a.followers ?? null;
+  const meta = [handle, followers != null ? fmtCount(followers) + ' pengikut' : '']
+    .filter(Boolean).join(' · ');
+
+  const avatar = a.avatar
+    ? `<img class="profile-avatar" src="${esc(a.avatar)}" alt="" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'"/>`
+    : `<div class="profile-avatar" aria-hidden="true"></div>`;
+
+  const card = $('profileCard');
+  card.dataset.uid = a.unique_id || '';
+  card.innerHTML = `
+    ${avatar}
+    <div class="profile-text">
+      <div class="profile-name">${name}</div>
+      <div class="profile-meta">${meta}</div>
+    </div>`;
+}
+
+function renderOptions(v) {
+  const items = [];
+  if (v.play) items.push({
+    name: 'Video HD',
+    desc: 'Tanpa watermark',
+    href: v.play,
+    file: 'Tikdrop_video.mp4',
+    label: 'Download',
+    primary: true,
+  });
+  if (v.music) items.push({
+    name: 'Audio MP3',
+    desc: (v.music_info?.title || 'Audio') + (v.music_info?.author ? ' · ' + v.music_info.author : ''),
+    href: v.music,
+    file: 'Tikdrop_audio.mp3',
+    label: 'Unduh MP3',
+    primary: false,
+  });
+
+  $('dlCards').innerHTML = items.map(it => `
+    <div class="option">
+      <div class="option-info">
+        <div class="option-name">${esc(it.name)}</div>
+        <div class="option-desc">${esc(it.desc)}</div>
+      </div>
+      <button type="button" class="dl-btn ${it.primary ? 'dl-btn-primary' : ''}"
+              data-href="${esc(it.href)}" data-name="${it.file}"
+              aria-label="${esc(it.label + ' ' + it.name)}">
+        <svg viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 1.5v8M7 9.5L4 6.5M7 9.5l3-3M1.5 12.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        ${esc(it.label)}
+      </button>
+    </div>`).join('');
+}
+
+function setPreview(v) {
+  const pv = $('previewVideo');
+  pv.pause();
+  pv.poster = v.cover || v.origin_cover || '';
+  pv.src = v.play || v.wmplay || '';
+  pv.load();
+  $('caption').textContent = v.title || '';
+}
+
+function resetResult() {
+  const pv = $('previewVideo');
+  pv.pause();
+  pv.removeAttribute('src');
+  pv.load();
+  $('resultsWrap').style.display = 'none';
+  $('profileCard').innerHTML = '';
+  $('dlCards').innerHTML = '';
+  $('caption').textContent = '';
+}
+
+/* ── Follower count (tikwm user endpoint) ── */
+async function loadFollowers(uniqueId) {
+  if (!uniqueId) return;
+  try {
+    const r = await fetch('https://www.tikwm.com/api/user/info?unique_id=' + encodeURIComponent(uniqueId));
+    const d = await r.json();
+    const count = d?.data?.stats?.followerCount;
+    if (count == null) return;
+
+    const card = $('profileCard');
+    if (card.dataset.uid !== uniqueId) return; // user already searched something else
+    card.querySelector('.profile-meta').textContent =
+      '@' + uniqueId + ' · ' + fmtCount(count) + ' pengikut';
+  } catch {
+    // Optional: the card works without follower count
+  }
+}
+
+/* ── Main fetch ── */
+async function go() {
+  const url = $('urlInput').value.trim();
+  const btn = $('goBtn');
+
+  $('errBox').style.display = 'none';
+  $('statusRow').innerHTML = '';
+  resetResult();
+
+  if (!url) return setError('Tempel link TikTok dulu ya.');
+  if (!url.includes('tiktok.com')) return setError('Link tidak dikenali — pastikan dari tiktok.com.');
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin">↻</span> <span class="go-label">Memproses...</span>`;
+  startProgress();
+  setStatusText('Mengambil data video...');
+
+  try {
+    const r = await fetch('https://www.tikwm.com/api/?url=' + encodeURIComponent(url));
+    let d;
+    try {
+      d = await r.json();
+    } catch {
+      throw new Error('Layanan belum merespons. Coba lagi sebentar lagi.');
+    }
+    if (!d || d.code !== 0 || !d.data) {
+      throw new Error(d?.msg || 'Gagal mengambil video. Coba URL lain.');
+    }
+
+    const v = d.data;
+    endProgress(true);
+    $('statusRow').innerHTML = '';
+
+    renderProfile(v);
+    setPreview(v);
+    renderOptions(v);
+    $('resultsWrap').style.display = 'block';
+    loadFollowers(v.author?.unique_id); // non-blocking
+  } catch (e) {
+    endProgress(false);
+    $('statusRow').innerHTML = '';
+    setError(e.message || 'Terjadi kesalahan. Coba lagi.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = GO_HTML;
+  }
+}
+
+/* ── Save file in place (no new tab) ── */
+function saveFile(url, name, btn) {
+  if (!url) return;
+  const original = btn.innerHTML;
+  const done = () => { btn.disabled = false; btn.innerHTML = original; };
+  const fallback = () => { done(); window.open(url, '_blank', 'noopener'); };
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="go-label">Menyimpan…</span>';
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.responseType = 'blob';
+  xhr.timeout = 60000;
+  xhr.onload = () => {
+    if (xhr.status !== 200 || !xhr.response) return fallback();
+    const blobUrl = URL.createObjectURL(xhr.response);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 1000);
+    done();
+  };
+  xhr.onerror = fallback;
+  xhr.ontimeout = fallback;
+  xhr.send();
+}
+
+/* ── Events ── */
+$('goBtn').addEventListener('click', go);
+
+$('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') go();
+});
+
+$('urlInput').addEventListener('paste', () => {
+  setTimeout(() => {
+    if ($('urlInput').value.trim().includes('tiktok.com')) go();
+  }, 60);
+});
+
+$('dlCards').addEventListener('click', e => {
+  const btn = e.target.closest('.dl-btn');
+  if (!btn || btn.disabled) return;
+  saveFile(btn.dataset.href, btn.dataset.name, btn);
+});
+</script>
+</body>
+</html>
